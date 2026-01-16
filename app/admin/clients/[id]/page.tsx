@@ -60,14 +60,15 @@ export default function ManageClient() {
 
   const loadClient = async () => {
     try {
-      // Load client data
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .single()
+      // Load client data via API (uses service role to bypass RLS)
+      const response = await fetch(`/api/admin/clients/${clientId}`)
+      const data = await response.json()
 
-      if (clientError) throw clientError
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load client')
+      }
+
+      const clientData = data.client
       if (!clientData) throw new Error('Client not found')
 
       setClient(clientData)
@@ -102,24 +103,29 @@ export default function ManageClient() {
     setSuccess(null)
 
     try {
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update({
-          client_name: clientName,
-          logo_url: logoUrl || null,
-          primary_colour: primaryColour,
-          secondary_colour: secondaryColour,
+      // Update client via API (uses service role to bypass RLS)
+      const response = await fetch(`/api/admin/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName,
+          logoUrl,
+          primaryColour,
+          secondaryColour,
           departments,
           locations,
-          survey_status: surveyStatus,
-          require_m365_auth: requireM365Auth,
-          allowed_m365_tenant_ids: allowedTenantIds,
-          allowed_m365_domains: allowedDomains,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', clientId)
+          surveyStatus,
+          requireM365Auth,
+          allowedTenantIds,
+          allowedDomains,
+        }),
+      })
 
-      if (updateError) throw updateError
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update client')
+      }
 
       setSuccess('Client updated successfully')
       await loadClient()

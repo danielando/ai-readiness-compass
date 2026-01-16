@@ -254,7 +254,7 @@ export default function SurveyPage() {
         current={currentQuestionIndex + 1}
         total={totalQuestions}
         primaryColor={branding.primaryColor}
-        style={isAdmin && surveyStatus !== 'active' ? { marginTop: '40px' } : {}}
+        className={isAdmin && surveyStatus !== 'active' ? 'top-10' : ''}
       />
       <QuestionCard
         question={currentQuestion}

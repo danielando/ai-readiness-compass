@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check if user is admin
@@ -16,11 +16,14 @@ export async function GET(
       )
     }
 
+    // Await params (Next.js 15+ requirement)
+    const { id } = await params
+
     // Get client using service role (bypasses RLS)
     const { data: client, error } = await supabaseAdmin
       .from('clients')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error || !client) {
@@ -43,7 +46,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check if user is admin
@@ -54,6 +57,9 @@ export async function PATCH(
         { status: 403 }
       )
     }
+
+    // Await params (Next.js 15+ requirement)
+    const { id } = await params
 
     const body = await request.json()
     const {
@@ -85,7 +91,7 @@ export async function PATCH(
         allowed_m365_domains: allowedDomains,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 

@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { X, Plus, ArrowLeft, Save, Eye, Trash2, Download, Search } from 'lucide-react'
+import { X, Plus, ArrowLeft, Save, Eye, Trash2, Download, Search, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ExecutiveDashboard } from '@/components/admin/reports/executive-dashboard'
 
 interface Client {
   id: string
@@ -69,6 +70,8 @@ export default function ManageClient() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -79,6 +82,13 @@ export default function ManageClient() {
   useEffect(() => {
     if (activeTab === 'responses' && responses.length === 0 && !loadingResponses) {
       loadResponses()
+    }
+  }, [activeTab])
+
+  // Load analytics when reports tab is selected
+  useEffect(() => {
+    if (activeTab === 'reports' && !analytics && !loadingAnalytics) {
+      loadAnalytics()
     }
   }, [activeTab])
 
@@ -140,6 +150,24 @@ export default function ManageClient() {
       console.error('Failed to load responses:', err)
     } finally {
       setLoadingResponses(false)
+    }
+  }
+
+  const loadAnalytics = async () => {
+    setLoadingAnalytics(true)
+    try {
+      const response = await fetch(`/api/admin/clients/${clientId}/analytics`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load analytics')
+      }
+
+      setAnalytics(data)
+    } catch (err: any) {
+      console.error('Failed to load analytics:', err)
+    } finally {
+      setLoadingAnalytics(false)
     }
   }
 
@@ -826,17 +854,30 @@ export default function ManageClient() {
           </TabsContent>
 
           <TabsContent value="reports">
-            <Card>
-              <CardHeader>
-                <CardTitle>Generated Reports</CardTitle>
-                <CardDescription>AI-generated insights and analysis</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-gray-500">
-                  <p className="text-sm">Report generation coming soon</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Executive Dashboard</CardTitle>
+                      <CardDescription>Comprehensive AI readiness insights and analytics</CardDescription>
+                    </div>
+                    <Button
+                      onClick={loadAnalytics}
+                      variant="outline"
+                      disabled={loadingAnalytics}
+                      size="sm"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${loadingAnalytics ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ExecutiveDashboard analytics={analytics} loading={loadingAnalytics} />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </main>

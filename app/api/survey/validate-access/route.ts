@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/admin-auth'
 
 export async function POST(request: NextRequest) {
@@ -14,9 +15,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get client configuration
-    const supabase = createClient()
-    const { data: client, error: clientError } = await supabase
+    // Get client configuration using service role to bypass RLS
+    const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('*')
       .eq('client_slug', clientSlug)

@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@14:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(dir:*)",
+      "Bash(node --version:*)",
+      "Bash(taskkill:*)",
+      "Bash(nul)",
+      "Bash(npm:*)",
+      "Bash($true)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(openssl rand:*)",
+      "Bash(Get-Process -Name node -ErrorAction SilentlyContinue)",
+      "Bash(Stop-Process -Force)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(timeout:*)",
+      "Bash(npx next dev:*)",
+      "Bash(cat:*)",
+      "Bash(if exist .nextdevlock del /f .nextdevlock)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

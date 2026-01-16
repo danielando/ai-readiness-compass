@@ -65,6 +65,7 @@ export default function ManageClient() {
   const [loadingResponses, setLoadingResponses] = useState(false)
   const [selectedResponse, setSelectedResponse] = useState<SurveyResponse | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState('settings')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,6 +76,13 @@ export default function ManageClient() {
   useEffect(() => {
     loadClient()
   }, [clientId])
+
+  // Load responses when responses tab is selected
+  useEffect(() => {
+    if (activeTab === 'responses' && responses.length === 0 && !loadingResponses) {
+      loadResponses()
+    }
+  }, [activeTab])
 
   const loadClient = async () => {
     try {
@@ -361,7 +369,7 @@ export default function ManageClient() {
           </div>
         )}
 
-        <Tabs defaultValue="settings" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="segmentation">Segmentation</TabsTrigger>

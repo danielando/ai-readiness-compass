@@ -9,6 +9,7 @@ const ADMIN_EMAILS = [
 // Admin domains - any user from these domains has admin access
 const ADMIN_DOMAINS = [
   "danielanderson.com.au",
+  "shiftf5.co",
   // Add more admin domains here as needed
 ]
 

@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { X, Plus, ArrowLeft, Save, Eye, Trash2 } from 'lucide-react'
+import { X, Plus, ArrowLeft, Save, Eye, Trash2, Download, Search } from 'lucide-react'
 import Link from 'next/link'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface Client {
   id: string
@@ -26,6 +27,19 @@ interface Client {
   require_m365_auth: boolean
   allowed_m365_tenant_ids: string[]
   allowed_m365_domains: string[]
+}
+
+interface SurveyResponse {
+  id: string
+  client_id: string
+  submitted_at: string
+  completion_time_seconds: number | null
+  authenticated_user_email: string | null
+  auth_method: string
+  role_level: string | null
+  department: string | null
+  location: string | null
+  [key: string]: any
 }
 
 export default function ManageClient() {
@@ -47,6 +61,10 @@ export default function ManageClient() {
   const [newTenantId, setNewTenantId] = useState('')
   const [newDomain, setNewDomain] = useState('')
   const [responseCount, setResponseCount] = useState(0)
+  const [responses, setResponses] = useState<SurveyResponse[]>([])
+  const [loadingResponses, setLoadingResponses] = useState(false)
+  const [selectedResponse, setSelectedResponse] = useState<SurveyResponse | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -95,6 +113,92 @@ export default function ManageClient() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadResponses = async () => {
+    setLoadingResponses(true)
+    try {
+      const response = await fetch(`/api/admin/clients/${clientId}/responses`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load responses')
+      }
+
+      setResponses(data.responses || [])
+      setResponseCount(data.responses?.length || 0)
+    } catch (err: any) {
+      console.error('Failed to load responses:', err)
+    } finally {
+      setLoadingResponses(false)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const formatCompletionTime = (seconds: number | null) => {
+    if (!seconds) return 'N/A'
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}m ${remainingSeconds}s`
+  }
+
+  const filteredResponses = responses.filter(response => {
+    if (!searchQuery) return true
+    const query = searchQuery.toLowerCase()
+    return (
+      response.authenticated_user_email?.toLowerCase().includes(query) ||
+      response.department?.toLowerCase().includes(query) ||
+      response.role_level?.toLowerCase().includes(query) ||
+      response.location?.toLowerCase().includes(query)
+    )
+  })
+
+  const handleExportCSV = () => {
+    if (responses.length === 0) return
+
+    // Get all unique field names from all responses
+    const fieldNames = new Set<string>()
+    responses.forEach(response => {
+      Object.keys(response).forEach(key => fieldNames.add(key))
+    })
+
+    const fields = Array.from(fieldNames)
+    const csvRows = []
+
+    // Header row
+    csvRows.push(fields.map(field => `"${field}"`).join(','))
+
+    // Data rows
+    responses.forEach(response => {
+      const values = fields.map(field => {
+        const value = response[field]
+        if (value === null || value === undefined) return '""'
+        if (Array.isArray(value)) return `"${value.join(', ')}"`
+        return `"${String(value).replace(/"/g, '""')}"`
+      })
+      csvRows.push(values.join(','))
+    })
+
+    const csvContent = csvRows.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `${client?.client_slug || 'survey'}-responses-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleSave = async () => {
@@ -594,14 +698,120 @@ export default function ManageClient() {
           <TabsContent value="responses">
             <Card>
               <CardHeader>
-                <CardTitle>Survey Responses</CardTitle>
-                <CardDescription>View and export responses for this client</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Survey Responses</CardTitle>
+                    <CardDescription>
+                      {responseCount} {responseCount === 1 ? 'response' : 'responses'} collected
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={loadResponses}
+                      variant="outline"
+                      disabled={loadingResponses}
+                    >
+                      {loadingResponses ? 'Loading...' : 'Refresh'}
+                    </Button>
+                    <Button
+                      onClick={handleExportCSV}
+                      variant="outline"
+                      disabled={responses.length === 0}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-gray-500">
-                  <p className="text-lg font-semibold mb-2">{responseCount} Total Responses</p>
-                  <p className="text-sm">Response management coming soon</p>
-                </div>
+                {!loadingResponses && responses.length === 0 && (
+                  <div className="text-center py-12 text-gray-500">
+                    <p className="text-lg font-semibold mb-2">No responses yet</p>
+                    <p className="text-sm">Responses will appear here once users complete the survey</p>
+                    <Button onClick={loadResponses} variant="outline" className="mt-4">
+                      Load Responses
+                    </Button>
+                  </div>
+                )}
+
+                {responses.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input
+                          placeholder="Search by email, department, role, or location..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                      <Badge variant="secondary">
+                        {filteredResponses.length} of {responses.length}
+                      </Badge>
+                    </div>
+
+                    <div className="border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Submitted</TableHead>
+                            <TableHead>User</TableHead>
+                            <TableHead>Auth Method</TableHead>
+                            <TableHead>Department</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead>Location</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredResponses.map((response) => (
+                            <TableRow key={response.id}>
+                              <TableCell className="text-sm">
+                                {formatDate(response.submitted_at)}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {response.authenticated_user_email || (
+                                  <span className="text-gray-400">Anonymous</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={response.auth_method === 'm365' ? 'default' : 'secondary'}>
+                                  {response.auth_method === 'm365' ? 'M365' : 'Anonymous'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{response.department || '-'}</TableCell>
+                              <TableCell>{response.role_level || '-'}</TableCell>
+                              <TableCell>{response.location || '-'}</TableCell>
+                              <TableCell className="text-sm text-gray-500">
+                                {formatCompletionTime(response.completion_time_seconds)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  onClick={() => setSelectedResponse(response)}
+                                  variant="ghost"
+                                  size="sm"
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+
+                {loadingResponses && (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Loading responses...</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -621,6 +831,100 @@ export default function ManageClient() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {selectedResponse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Response Details</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Submitted {formatDate(selectedResponse.submitted_at)}
+                </p>
+              </div>
+              <Button
+                onClick={() => setSelectedResponse(null)}
+                variant="ghost"
+                size="sm"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4 pb-6 border-b">
+                <div>
+                  <p className="text-sm text-gray-500">User Email</p>
+                  <p className="font-medium">
+                    {selectedResponse.authenticated_user_email || 'Anonymous'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Auth Method</p>
+                  <Badge variant={selectedResponse.auth_method === 'm365' ? 'default' : 'secondary'}>
+                    {selectedResponse.auth_method === 'm365' ? 'Microsoft 365' : 'Anonymous'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Department</p>
+                  <p className="font-medium">{selectedResponse.department || 'Not specified'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Role Level</p>
+                  <p className="font-medium">{selectedResponse.role_level || 'Not specified'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Location</p>
+                  <p className="font-medium">{selectedResponse.location || 'Not specified'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Completion Time</p>
+                  <p className="font-medium">
+                    {formatCompletionTime(selectedResponse.completion_time_seconds)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Survey Responses</h3>
+
+                {Object.entries(selectedResponse)
+                  .filter(([key]) =>
+                    !['id', 'client_id', 'submitted_at', 'completion_time_seconds',
+                      'authenticated_user_email', 'm365_tenant_id', 'auth_method'].includes(key)
+                  )
+                  .map(([key, value]) => {
+                    if (value === null || value === undefined) return null
+
+                    const displayKey = key
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (char) => char.toUpperCase())
+
+                    let displayValue = value
+                    if (Array.isArray(value)) {
+                      displayValue = value.join(', ')
+                    } else if (typeof value === 'object') {
+                      displayValue = JSON.stringify(value, null, 2)
+                    }
+
+                    return (
+                      <div key={key} className="border-b pb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-1">{displayKey}</p>
+                        <p className="text-gray-900 whitespace-pre-wrap">{String(displayValue)}</p>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-2">
+              <Button onClick={() => setSelectedResponse(null)} variant="outline">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -2,6 +2,41 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
+export async function GET() {
+  try {
+    // Check if user is admin
+    const adminCheck = await isAdmin()
+    if (!adminCheck) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 403 }
+      )
+    }
+
+    // Get all clients using service role (bypasses RLS)
+    const { data: clients, error } = await supabaseAdmin
+      .from('clients')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Fetch error:', error)
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ clients })
+  } catch (error) {
+    console.error('Client fetch error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Check if user is admin

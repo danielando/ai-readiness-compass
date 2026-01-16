@@ -56,16 +56,18 @@ export default function AdminDashboard() {
 
       setIsAdmin(data.isAdmin)
 
-      // Get all clients (admins can see all)
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('*')
-        .order('created_at', { ascending: false })
+      // Get all clients via API (uses service role to bypass RLS)
+      const clientsResponse = await fetch('/api/admin/clients')
+      const clientsData = await clientsResponse.json()
+
+      if (!clientsResponse.ok) {
+        throw new Error(clientsData.error || 'Failed to load clients')
+      }
 
       // Get response counts for each client
-      if (clientsData) {
+      if (clientsData.clients) {
         const clientsWithCounts = await Promise.all(
-          clientsData.map(async (client) => {
+          clientsData.clients.map(async (client: any) => {
             const { count } = await supabase
               .from('responses')
               .select('*', { count: 'exact', head: true })

@@ -11,6 +11,7 @@ import { X, Plus, ArrowLeft, Save, Eye, Trash2, Download, Search, RefreshCw } fr
 import Link from 'next/link'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ExecutiveDashboard } from '@/components/admin/reports/executive-dashboard'
+import { PersonaAnalysis } from '@/components/admin/reports/persona-analysis'
 
 interface Client {
   id: string
@@ -85,9 +86,9 @@ export default function ManageClient() {
     }
   }, [activeTab])
 
-  // Load analytics when reports tab is selected
+  // Load analytics when reports or personas tab is selected
   useEffect(() => {
-    if (activeTab === 'reports' && !analytics && !loadingAnalytics) {
+    if ((activeTab === 'reports' || activeTab === 'personas') && !analytics && !loadingAnalytics) {
       loadAnalytics()
     }
   }, [activeTab])
@@ -405,6 +406,7 @@ export default function ManageClient() {
             <TabsTrigger value="authentication">Authentication</TabsTrigger>
             <TabsTrigger value="responses">Responses ({responseCount})</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="personas">Personas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="settings" className="space-y-6">
@@ -875,6 +877,33 @@ export default function ManageClient() {
                 </CardHeader>
                 <CardContent>
                   <ExecutiveDashboard analytics={analytics} loading={loadingAnalytics} />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="personas">
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Persona Analysis</CardTitle>
+                      <CardDescription>User personas and targeted intervention strategies</CardDescription>
+                    </div>
+                    <Button
+                      onClick={loadAnalytics}
+                      variant="outline"
+                      disabled={loadingAnalytics}
+                      size="sm"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${loadingAnalytics ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <PersonaAnalysis personas={analytics?.personas} loading={loadingAnalytics} />
                 </CardContent>
               </Card>
             </div>

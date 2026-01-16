@@ -91,6 +91,9 @@ function calculateAnalytics(responses: ResponseData[]) {
   // Key insights
   const insights = generateInsights(responses, overallScore)
 
+  // Persona classification
+  const personas = classifyPersonas(responses)
+
   return {
     totalResponses,
     overallScore,
@@ -110,6 +113,7 @@ function calculateAnalytics(responses: ResponseData[]) {
     barriers,
     opportunities,
     insights,
+    personas,
     participationRate: {
       total: totalResponses,
       byDepartment: getDepartmentParticipation(responses),
@@ -352,4 +356,194 @@ function getRoleLevelParticipation(responses: ResponseData[]) {
     roleCounts[role] = (roleCounts[role] || 0) + 1
   })
   return roleCounts
+}
+
+function classifyPersonas(responses: ResponseData[]) {
+  const personaData = responses.map(r => classifyPersona(r))
+
+  // Count personas
+  const distribution: { [key: string]: number } = {}
+  personaData.forEach(p => {
+    distribution[p.persona] = (distribution[p.persona] || 0) + 1
+  })
+
+  // Get examples for each persona
+  const examples: { [key: string]: any[] } = {}
+  personaData.forEach(p => {
+    if (!examples[p.persona]) examples[p.persona] = []
+    if (examples[p.persona].length < 3) {
+      examples[p.persona].push({
+        department: p.department,
+        roleLevel: p.roleLevel,
+        email: p.email
+      })
+    }
+  })
+
+  // Define persona details
+  const personaDetails = {
+    'Principal Pat': {
+      description: 'Power users already thriving with AI - leverage as champions and trainers',
+      characteristics: ['Daily AI usage', 'High confidence', 'Multiple tools known'],
+      priority: 'High',
+      approach: 'Leverage as Champions',
+      recommendations: [
+        'Invite to become AI champions and peer trainers',
+        'Have them share success stories and use cases',
+        'Create a community of practice led by this group',
+        'Ask them to mentor Enthusiastic Emmas'
+      ]
+    },
+    'Enthusiastic Emma': {
+      description: 'Really excited about AI but loses steam when things don\'t work - needs someone to come alongside',
+      characteristics: ['High interest', 'Low-medium usage', 'Skill barriers'],
+      priority: 'High',
+      approach: 'Intensive Support',
+      recommendations: [
+        'Provide 1:1 coaching and troubleshooting sessions',
+        'Create "office hours" for hands-on help',
+        'Pair with Principal Pats as mentors',
+        'Send quick-win tutorials for immediate success',
+        'Check in regularly to maintain momentum'
+      ]
+    },
+    'Curious Chris': {
+      description: 'Interested and exploring but hasn\'t committed yet - needs clear use cases',
+      characteristics: ['Medium readiness', 'Exploring usage', 'Needs direction'],
+      priority: 'Medium',
+      approach: 'Guided Exploration',
+      recommendations: [
+        'Provide role-specific use case examples',
+        'Offer structured learning paths',
+        'Share quick wins from their department',
+        'Host "lunch and learn" sessions',
+        'Give them small challenges to try'
+      ]
+    },
+    'Cautious Clara': {
+      description: 'Has reservations about AI - needs reassurance and concerns addressed',
+      characteristics: ['Privacy/quality concerns', 'Conditional interest'],
+      priority: 'Medium',
+      approach: 'Address Concerns',
+      recommendations: [
+        'Share detailed privacy and security policies',
+        'Provide case studies on quality control',
+        'Host ethical AI discussion sessions',
+        'Demonstrate responsible AI practices',
+        'Connect with compliance/security teams'
+      ]
+    },
+    'Traditionalist Tim': {
+      description: 'Resistant to change, prefers established methods - needs culture shift',
+      characteristics: ['Low interest', 'Prefers current methods', 'Low usage'],
+      priority: 'Low',
+      approach: 'Cultural Change',
+      recommendations: [
+        'Focus on enhancing (not replacing) their expertise',
+        'Show AI as a tool, not a threat',
+        'Start with optional, low-pressure introductions',
+        'Respect their perspective and timeline',
+        'Let early wins from others create curiosity'
+      ]
+    },
+    'Overwhelmed Owen': {
+      description: 'Wants to adopt but blocked by time or organizational constraints',
+      characteristics: ['High interest', 'Low usage', 'Time/resource barriers'],
+      priority: 'High',
+      approach: 'Remove Barriers',
+      recommendations: [
+        'Provide pre-built templates and shortcuts',
+        'Integrate AI into existing workflows',
+        'Allocate dedicated learning time',
+        'Simplify tool selection with recommendations',
+        'Address organizational blockers'
+      ]
+    }
+  }
+
+  return {
+    distribution,
+    examples,
+    details: personaDetails,
+    totalClassified: responses.length
+  }
+}
+
+function classifyPersona(response: ResponseData) {
+  // Calculate scores
+  const usageScore = mapUsageToScore(response.current_ai_usage)
+  const readinessScore = mapReadinessToScore(response.readiness_to_adopt)
+  const confidenceScore = mapConfidenceToScore(response.ai_skills_confidence)
+  const awarenessCount = Array.isArray(response.ai_tools_awareness) ? response.ai_tools_awareness.length : 0
+  const trainingInterest = response.training_interest === 'Very interested' || response.training_interest === 'Somewhat interested'
+
+  // Interest-Usage Gap (Emma's signature)
+  const interestUsageGap = readinessScore - usageScore
+
+  // Barrier analysis
+  const barriers = Array.isArray(response.adoption_barriers) ? response.adoption_barriers : []
+  const hasSkillBarriers = barriers.some(b =>
+    b.includes('technical skills') || b.includes('where to start')
+  )
+  const hasConcernBarriers = barriers.some(b =>
+    b.includes('privacy') || b.includes('ethical') || b.includes('accuracy') || b.includes('quality')
+  )
+  const hasTimeBarriers = barriers.some(b =>
+    b.includes('time') || b.includes('Integration challenges') || b.includes('Too many options')
+  )
+  const hasResistanceBarriers = barriers.some(b =>
+    b.includes('current methods') || b.includes('job security')
+  )
+
+  let persona = 'Curious Chris' // Default
+
+  // Classification logic
+  if (usageScore >= 75 && confidenceScore >= 75 && awarenessCount >= 3) {
+    persona = 'Principal Pat'
+  } else if (interestUsageGap >= 40 && hasSkillBarriers && trainingInterest) {
+    persona = 'Enthusiastic Emma'
+  } else if (readinessScore < 40 && (hasResistanceBarriers || usageScore === 0)) {
+    persona = 'Traditionalist Tim'
+  } else if (hasConcernBarriers && readinessScore >= 40) {
+    persona = 'Cautious Clara'
+  } else if (readinessScore >= 60 && usageScore < 40 && hasTimeBarriers) {
+    persona = 'Overwhelmed Owen'
+  }
+
+  return {
+    persona,
+    usageScore,
+    readinessScore,
+    confidenceScore,
+    department: response.department,
+    roleLevel: response.role_level,
+    email: response.authenticated_user_email
+  }
+}
+
+function mapUsageToScore(usage: string | undefined): number {
+  if (!usage) return 0
+  if (usage === 'Daily') return 100
+  if (usage === 'Weekly') return 75
+  if (usage === 'Monthly') return 50
+  if (usage === 'Rarely') return 25
+  return 0
+}
+
+function mapReadinessToScore(readiness: string | undefined): number {
+  if (!readiness) return 0
+  if (readiness === 'Very ready') return 100
+  if (readiness === 'Somewhat ready') return 75
+  if (readiness === 'Neutral') return 50
+  if (readiness === 'Not very ready') return 25
+  return 0
+}
+
+function mapConfidenceToScore(confidence: string | undefined): number {
+  if (!confidence) return 0
+  if (confidence === 'Very confident') return 100
+  if (confidence === 'Somewhat confident') return 75
+  if (confidence === 'Neutral') return 50
+  if (confidence === 'Not very confident') return 25
+  return 0
 }

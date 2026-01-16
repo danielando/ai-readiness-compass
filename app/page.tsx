@@ -11,10 +11,25 @@ export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    // If already signed in, redirect to dashboard
-    if (session?.user) {
-      router.push('/admin/dashboard')
+    // If already signed in, determine where to route the user
+    const checkRouteDestination = async () => {
+      if (session?.user) {
+        try {
+          const response = await fetch('/api/auth/route-destination')
+          const data = await response.json()
+
+          if (data.destination) {
+            router.push(data.destination)
+          }
+        } catch (error) {
+          console.error('Failed to determine route destination:', error)
+          // Fallback to admin dashboard
+          router.push('/admin/dashboard')
+        }
+      }
     }
+
+    checkRouteDestination()
   }, [session, router])
 
   if (status === 'loading') {
@@ -74,7 +89,7 @@ export default function HomePage() {
         {/* Sign In Button */}
         <div className="space-y-4">
           <Button
-            onClick={() => signIn('azure-ad', { callbackUrl: '/admin/dashboard' })}
+            onClick={() => signIn('azure-ad', { callbackUrl: '/' })}
             size="lg"
             className="text-lg px-10 py-7 h-auto rounded-xl font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]"
           >

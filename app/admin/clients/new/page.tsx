@@ -84,36 +84,28 @@ export default function NewClient() {
     setError(null)
 
     try {
-      // Check if slug already exists
-      const { data: existing } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('client_slug', clientSlug)
-        .single()
-
-      if (existing) {
-        throw new Error('A client with this slug already exists. Please choose a different name.')
-      }
-
-      // Create client
-      const { data: client, error: insertError } = await supabase
-        .from('clients')
-        .insert({
-          client_name: clientName,
-          client_slug: clientSlug,
-          logo_url: logoUrl || null,
-          primary_colour: primaryColour,
-          secondary_colour: secondaryColour,
+      // Create client via API (uses service role to bypass RLS)
+      const response = await fetch('/api/admin/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName,
+          clientSlug,
+          logoUrl,
+          primaryColour,
+          secondaryColour,
           departments,
           locations,
-          survey_status: 'draft'
-        })
-        .select()
-        .single()
+        }),
+      })
 
-      if (insertError) throw insertError
+      const data = await response.json()
 
-      router.push(`/admin/clients/${client.id}`)
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create client')
+      }
+
+      router.push(`/admin/clients/${data.client.id}`)
     } catch (err: any) {
       setError(err.message || 'Failed to create client')
     } finally {

@@ -142,6 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create or update survey session
+    const supabase = createClient()
     const { data: existingSession } = await supabase
       .from('survey_sessions')
       .select('*')

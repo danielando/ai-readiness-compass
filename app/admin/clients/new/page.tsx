@@ -105,7 +105,8 @@ export default function NewClient() {
         throw new Error(data.error || 'Failed to create client')
       }
 
-      router.push(`/admin/clients/${data.client.id}`)
+      // Redirect to dashboard (client detail page has RLS issues with M365 auth)
+      router.push('/admin/dashboard')
     } catch (err: any) {
       setError(err.message || 'Failed to create client')
     } finally {

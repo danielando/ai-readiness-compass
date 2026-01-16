@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +24,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -64,16 +62,19 @@ export default function AdminDashboard() {
         throw new Error(clientsData.error || 'Failed to load clients')
       }
 
-      // Get response counts for each client
+      // Get response counts for each client via API (bypasses RLS)
       if (clientsData.clients) {
         const clientsWithCounts = await Promise.all(
           clientsData.clients.map(async (client: any) => {
-            const { count } = await supabase
-              .from('responses')
-              .select('*', { count: 'exact', head: true })
-              .eq('client_id', client.id)
-
-            return { ...client, response_count: count || 0 }
+            try {
+              const response = await fetch(`/api/admin/clients/${client.id}/responses`)
+              const data = await response.json()
+              const count = data.responses?.length || 0
+              return { ...client, response_count: count }
+            } catch (error) {
+              console.error(`Failed to load responses for client ${client.id}:`, error)
+              return { ...client, response_count: 0 }
+            }
           })
         )
         setClients(clientsWithCounts)

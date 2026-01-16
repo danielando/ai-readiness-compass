@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -71,7 +70,6 @@ export default function ManageClient() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     loadClient()
@@ -109,13 +107,16 @@ export default function ManageClient() {
       setAllowedTenantIds(clientData.allowed_m365_tenant_ids || [])
       setAllowedDomains(clientData.allowed_m365_domains || [])
 
-      // Load response count
-      const { count } = await supabase
-        .from('responses')
-        .select('*', { count: 'exact', head: true })
-        .eq('client_id', clientId)
-
-      setResponseCount(count || 0)
+      // Load response count via API (bypasses RLS)
+      try {
+        const responseCountRes = await fetch(`/api/admin/clients/${clientId}/responses`)
+        const responseData = await responseCountRes.json()
+        const count = responseData.responses?.length || 0
+        setResponseCount(count)
+      } catch (error) {
+        console.error('Failed to load response count:', error)
+        setResponseCount(0)
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load client')
     } finally {

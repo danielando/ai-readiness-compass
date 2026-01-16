@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,58 +19,48 @@ interface Client {
   response_count?: number
 }
 
-interface AdminUser {
-  id: string
-  email: string
-  name: string | null
-  role: 'admin' | 'consultant'
-  client_access: string[]
-}
-
 export default function AdminDashboard() {
-  const [user, setUser] = useState<AdminUser | null>(null)
+  const { data: session, status } = useSession()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
-    checkAuth()
-  }, [])
+    if (status === 'unauthenticated') {
+      router.push('/admin/login')
+      return
+    }
 
-  const checkAuth = async () => {
+    if (status === 'authenticated') {
+      checkAdminAccess()
+    }
+  }, [status, router])
+
+  const checkAdminAccess = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session) {
+      if (!session?.user?.email) {
         router.push('/admin/login')
         return
       }
 
-      // Get admin user details
-      const { data: adminUser } = await supabase
-        .from('admin_users')
+      // Check if user is admin via M365 domain
+      const response = await fetch('/api/admin/check-access')
+      const data = await response.json()
+
+      if (!data.isAdmin) {
+        router.push('/admin/login')
+        return
+      }
+
+      setIsAdmin(data.isAdmin)
+
+      // Get all clients (admins can see all)
+      const { data: clientsData } = await supabase
+        .from('clients')
         .select('*')
-        .eq('id', session.user.id)
-        .single()
-
-      if (!adminUser) {
-        await supabase.auth.signOut()
-        router.push('/admin/login')
-        return
-      }
-
-      setUser(adminUser)
-
-      // Get clients based on access level
-      let query = supabase.from('clients').select('*')
-
-      // If not admin, filter by client_access array
-      if (adminUser.role !== 'admin' && adminUser.client_access?.length > 0) {
-        query = query.in('id', adminUser.client_access)
-      }
-
-      const { data: clientsData } = await query.order('created_at', { ascending: false })
+        .order('created_at', { ascending: false })
 
       // Get response counts for each client
       if (clientsData) {
@@ -94,8 +85,7 @@ export default function AdminDashboard() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/admin/login')
+    await signOut({ callbackUrl: '/' })
   }
 
   const getStatusColor = (status: string) => {
@@ -121,13 +111,13 @@ export default function AdminDashboard() {
       <header className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">AI Readiness Portal</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Compass Admin Portal</h1>
             <p className="text-sm text-gray-600">
-              Welcome back, {user?.name || user?.email}
+              Welcome back, {session?.user?.name || session?.user?.email}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {user?.role === 'admin' && (
+            {isAdmin && (
               <Link href="/admin/clients/new">
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />

@@ -1,28 +1,94 @@
-import Link from "next/link"
+'use client'
+
+import { signIn, useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Building2, TrendingUp, Shield } from "lucide-react"
 
 export default function HomePage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    // If already signed in, redirect to dashboard
+    if (session?.user) {
+      router.push('/admin/dashboard')
+    }
+  }, [session, router])
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-2xl mx-auto px-6 text-center">
-        <h1 className="text-5xl font-bold text-gray-900 mb-6">
-          AI Readiness Assessment Platform
-        </h1>
-        <p className="text-xl text-gray-600 mb-8">
-          Evaluate your organization's AI adoption readiness with comprehensive surveys and insights
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Link
-            href="/admin"
-            className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6">
+      <div className="max-w-2xl mx-auto text-center space-y-12">
+        {/* Logo/Title */}
+        <div className="space-y-4">
+          <h1 className="text-6xl md:text-7xl font-bold text-gray-900 tracking-tight">
+            Compass
+          </h1>
+          <p className="text-xl text-gray-600">
+            AI Readiness Assessment Platform
+          </p>
+        </div>
+
+        {/* Feature Cards */}
+        <div className="grid gap-6 max-w-xl mx-auto">
+          <div className="flex items-start gap-4 text-left p-6 bg-gray-50 rounded-2xl border border-gray-200">
+            <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center bg-white border border-gray-200">
+              <Building2 className="w-6 h-6 text-gray-900" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-1">Multi-tenant Platform</h3>
+              <p className="text-sm text-gray-600">Manage multiple client assessments with custom branding</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-4 text-left p-6 bg-gray-50 rounded-2xl border border-gray-200">
+            <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center bg-white border border-gray-200">
+              <TrendingUp className="w-6 h-6 text-gray-900" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-1">Comprehensive Insights</h3>
+              <p className="text-sm text-gray-600">35 questions across 8 sections to evaluate AI readiness</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-4 text-left p-6 bg-gray-50 rounded-2xl border border-gray-200">
+            <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center bg-white border border-gray-200">
+              <Shield className="w-6 h-6 text-gray-900" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-1">Enterprise Security</h3>
+              <p className="text-sm text-gray-600">Microsoft 365 SSO authentication for secure access</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sign In Button */}
+        <div className="space-y-4">
+          <Button
+            onClick={() => signIn('azure-ad', { callbackUrl: '/admin/dashboard' })}
+            size="lg"
+            className="text-lg px-10 py-7 h-auto rounded-xl font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]"
           >
-            Admin Dashboard
-          </Link>
-          <Link
-            href="/survey/demo"
-            className="px-8 py-3 bg-white text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium"
-          >
-            View Demo Survey
-          </Link>
+            <svg className="w-5 h-5 mr-3" viewBox="0 0 23 23" fill="none">
+              <path d="M11 11h11v11H11z" fill="#FEBA08"/>
+              <path d="M0 11h11v11H0z" fill="#05A6F0"/>
+              <path d="M11 0h11v11H11z" fill="#80BC06"/>
+              <path d="M0 0h11v11H0z" fill="#F25325"/>
+            </svg>
+            Sign in with Microsoft 365
+          </Button>
+          <p className="text-sm text-gray-400">
+            Secure authentication powered by Azure Active Directory
+          </p>
         </div>
       </div>
     </div>

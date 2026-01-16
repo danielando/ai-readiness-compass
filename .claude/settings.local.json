@@ -21,7 +21,11 @@
       "Bash(cat:*)",
       "Bash(if exist .nextdevlock del /f .nextdevlock)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: Compass AI Readiness Assessment Platform\n\nFeatures:\n- Minimalist black & white Typeform-inspired survey UI\n- 35 questions across 8 sections for comprehensive AI readiness assessment\n- Microsoft 365 SSO authentication with tenant/domain validation\n- Multi-tenant architecture with client branding support\n- Admin dashboard for client management\n- Supabase PostgreSQL backend\n- Next.js 16 with App Router and TypeScript\n- Mobile-responsive design with smooth animations\n\nTech Stack:\n- Next.js 16, TypeScript, Tailwind CSS\n- NextAuth v5 for M365 authentication\n- Supabase for database and storage\n- Framer Motion for animations\n- shadcn/ui components\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

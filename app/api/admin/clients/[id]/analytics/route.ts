@@ -120,7 +120,7 @@ function calculateAnalytics(responses: ResponseData[]) {
 
 function calculateAdoptionScore(responses: ResponseData[]): number {
   // Based on current_ai_usage field
-  const usageScores = responses.map(r => {
+  const usageScores: number[] = responses.map(r => {
     const usage = r.current_ai_usage
     if (!usage) return 0
     if (usage === 'Daily') return 100
@@ -134,7 +134,7 @@ function calculateAdoptionScore(responses: ResponseData[]): number {
 
 function calculateAwarenessScore(responses: ResponseData[]): number {
   // Based on ai_tools_awareness
-  const awarenessScores = responses.map(r => {
+  const awarenessScores: number[] = responses.map(r => {
     const awareness = r.ai_tools_awareness
     if (!awareness) return 0
     if (Array.isArray(awareness)) {
@@ -148,7 +148,7 @@ function calculateAwarenessScore(responses: ResponseData[]): number {
 
 function calculateReadinessScore(responses: ResponseData[]): number {
   // Based on readiness_to_adopt
-  const readinessScores = responses.map(r => {
+  const readinessScores: number[] = responses.map(r => {
     const readiness = r.readiness_to_adopt
     if (!readiness) return 0
     if (readiness === 'Very ready') return 100
@@ -162,7 +162,7 @@ function calculateReadinessScore(responses: ResponseData[]): number {
 
 function calculateBarriersScore(responses: ResponseData[]): number {
   // Inverse score - fewer barriers = higher score
-  const barrierCounts = responses.map(r => {
+  const barrierCounts: number[] = responses.map(r => {
     const barriers = r.adoption_barriers
     if (!barriers) return 0
     if (Array.isArray(barriers)) return barriers.length
@@ -175,7 +175,7 @@ function calculateBarriersScore(responses: ResponseData[]): number {
 
 function calculateSkillsScore(responses: ResponseData[]): number {
   // Based on ai_skills_confidence
-  const skillsScores = responses.map(r => {
+  const skillsScores: number[] = responses.map(r => {
     const confidence = r.ai_skills_confidence
     if (!confidence) return 0
     if (confidence === 'Very confident') return 100

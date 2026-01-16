@@ -15,32 +15,58 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if user is an admin first (before client lookup)
+    const userIsAdmin = await isAdmin()
+    const session = await auth()
+
     // Get client configuration using service role to bypass RLS
-    const { data: client, error: clientError } = await supabaseAdmin
-      .from('clients')
-      .select('*')
-      .eq('client_slug', clientSlug)
-      .eq('survey_status', 'active')
-      .single()
+    // Admins can access any status, regular users need 'active'
+    let client
+    let clientError
+
+    if (userIsAdmin && session?.user) {
+      // Admin: fetch client regardless of status
+      const result = await supabaseAdmin
+        .from('clients')
+        .select('*')
+        .eq('client_slug', clientSlug)
+        .single()
+      client = result.data
+      clientError = result.error
+    } else {
+      // Regular user: only fetch active surveys
+      const result = await supabaseAdmin
+        .from('clients')
+        .select('*')
+        .eq('client_slug', clientSlug)
+        .eq('survey_status', 'active')
+        .single()
+      client = result.data
+      clientError = result.error
+    }
 
     if (clientError || !client) {
+      console.error(`Client lookup failed for slug "${clientSlug}":`, clientError)
       return NextResponse.json(
-        { error: 'Survey not found or not active' },
+        {
+          allowed: false,
+          error: 'Survey not found or not active',
+          reason: 'Survey not found or not active. Please check that the survey exists and is set to "active" status.'
+        },
         { status: 404 }
       )
     }
 
-    // Check if user is an admin (via M365 email/domain)
-    const userIsAdmin = await isAdmin()
-    const session = await auth()
+    console.log(`Client found: ${client.client_name} (${client.id}), Status: ${client.survey_status}`)
 
     if (userIsAdmin && session?.user) {
-      // Admin users can access any survey
+      // Admin users can access any survey (even draft/closed)
       console.log('Admin access granted for M365 user:', session.user.email)
       return NextResponse.json({
         allowed: true,
         requiresAuth: false,
         isAdmin: true,
+        surveyStatus: client.survey_status,
         user: {
           email: session.user.email,
           name: session.user.name,

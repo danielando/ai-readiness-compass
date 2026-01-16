@@ -24,6 +24,8 @@ export default function SurveyPage() {
   const [authValidated, setAuthValidated] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [surveyStatus, setSurveyStatus] = useState<'draft' | 'active' | 'closed'>('active')
 
   // Demo branding - in production, this would be fetched from Supabase based on slug
   const [branding] = useState<ClientBranding>({
@@ -90,6 +92,8 @@ export default function SurveyPage() {
 
         // Access granted (either via M365 or admin session)
         setAuthValidated(true)
+        setIsAdmin(data.isAdmin || false)
+        setSurveyStatus(data.surveyStatus || 'active')
       } catch (error) {
         console.error('Failed to validate access:', error)
         setAuthError('Failed to validate access. Please try again.')
@@ -236,10 +240,21 @@ export default function SurveyPage() {
 
   return (
     <>
+      {/* Admin Preview Banner */}
+      {isAdmin && surveyStatus !== 'active' && (
+        <div className={`fixed top-0 left-0 right-0 z-50 ${
+          surveyStatus === 'draft' ? 'bg-yellow-500' : 'bg-gray-500'
+        } text-white px-4 py-2 text-center text-sm font-medium`}>
+          {surveyStatus === 'draft' && '📝 PREVIEW MODE - This survey is in DRAFT status and not yet published'}
+          {surveyStatus === 'closed' && '🔒 PREVIEW MODE - This survey is CLOSED and no longer accepting responses'}
+        </div>
+      )}
+
       <ProgressBar
         current={currentQuestionIndex + 1}
         total={totalQuestions}
         primaryColor={branding.primaryColor}
+        style={isAdmin && surveyStatus !== 'active' ? { marginTop: '40px' } : {}}
       />
       <QuestionCard
         question={currentQuestion}
